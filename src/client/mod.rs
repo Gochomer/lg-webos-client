@@ -16,6 +16,7 @@ use tokio_tungstenite::{
 };
 
 use super::command::{create_command, Command, CommandResponse};
+use crate::command::luna_command::{LunaCommand, LunaCommands};
 use crate::command::CommandRequest;
 
 use serde::{Deserialize, Serialize};
@@ -194,6 +195,53 @@ where
             "onclose": {"uri": luna_uri, "params": params},
             "onfail": {"uri": luna_uri, "params": params},
         });
+
+        let alert = self.send_command(Command::CreateAlert(payload)).await?;
+
+        let alert_id = alert.payload.map(|v| {
+            let str = v["alertId"].as_str().unwrap();
+            // We first need to convert to str before calling to_string else this does not parse properly.
+            str.to_string()
+        });
+
+        if let Some(alert_id) = alert_id {
+            self.send_command(Command::CloseAlert(alert_id)).await
+        } else {
+            Err(ClientError::CommandSendError)
+        }
+    }
+
+    /// Sends a special luna command and waits for response
+    pub async fn send_luna_command_pretty(
+        &self,
+        luna_cmd: LunaCommands
+    ) -> Result<CommandResponse, ClientError> {
+        // https://github.com/chros73/bscpylgtv/blob/master/bscpylgtv/webos_client.py#L1098
+        // n.b. this is a hack which abuses the alert API
+        // to call the internal luna API which is otherwise
+        // not exposed through the websocket interface
+        // An important limitation is that any returned
+        // data is not accessible
+
+        // set desired action for click, fail and close
+        // for redundancy/robustness
+
+        let luna_cmd: LunaCommand = luna_cmd.into();
+
+        let buttons = vec![json!({
+            "label": "",
+            "onClick": luna_cmd.uri,
+            "params": luna_cmd.params
+        })];
+
+        let payload = json!({
+            "message": " ",
+            "buttons": buttons,
+            "onclose": {"uri": luna_cmd.uri, "params": luna_cmd.params},
+            "onfail": {"uri": luna_cmd.uri, "params": luna_cmd.params},
+        });
+
+        println!("{payload}");
 
         let alert = self.send_command(Command::CreateAlert(payload)).await?;
 
