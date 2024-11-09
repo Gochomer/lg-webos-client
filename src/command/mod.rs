@@ -18,6 +18,7 @@ pub enum Command {
     CreateToast(String),
     OpenBrowser(String),
     TurnOff,
+    TogglePanel(bool),
     SetChannel(String),
     SetInput(String),
     SetMute(bool),
@@ -78,6 +79,12 @@ pub fn create_command(id: String, cmd: Command) -> CommandRequest {
             id,
             r#type: String::from("request"),
             uri: String::from("ssap://system/turnOff"),
+            payload: None,
+        },
+        Command::TogglePanel(state) => CommandRequest {
+            id,
+            r#type: String::from("request"),
+            uri: format!("ssap://com.webos.service.tvpower/power/turn{}Screen", if state { "On" } else { "Off" }),
             payload: None,
         },
         Command::SetChannel(channel_id) => CommandRequest {
