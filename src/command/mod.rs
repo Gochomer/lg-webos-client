@@ -1,6 +1,8 @@
 use serde::Serialize;
 use serde_json::{json, Value};
 
+pub mod luna_command;
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommandRequest {
